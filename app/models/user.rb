@@ -21,29 +21,28 @@ class User < ApplicationRecord
   private
   
   def store_digest
-    if encrypted_password_changed?
-      PasswordHistory.create(:user => self, :encrypted_password => encrypted_password)
-      @user_all_password = self.password_histories.order(created_at: :desc).collect(&:id)
-      @last_password = self.password_histories.order(created_at: :desc).last(6).collect(&:id)
-      @extra_password = @user_all_password - @last_password
-      PasswordHistory.where(id: @extra_password).destroy_all
+    if self.password == self.username
+      if encrypted_password_changed?
+        PasswordHistory.create(:user => self, :encrypted_password => encrypted_password)
+        @user_all_password = self.password_histories.order(created_at: :desc).collect(&:id)
+        @last_password = self.password_histories.order(created_at: :desc).last(6).collect(&:id)
+        @extra_password = @user_all_password - @last_password
+        PasswordHistory.where(id: @extra_password).destroy_all 
+      end
+      "Password must be diffrent then username."
     end
   end
 
- #  validates :username, presence: :true, uniqueness: { case_sensitive: false }
-	# validates_format_of :username, with: /^[a-zA-Z0-9_\.]*$/, :multiline => true
-
-	# validate :validate_username
-  
-  
-
-	# def validate_username
- #    puts "......1a..validate_username.#{}"
-	#   if User.where(email: username).exists?
- #      puts "......1asdasda...#{User.where(email: username)}"
-	#     errors.add(:username, :invalid)
-	#   end
-	# end
+  # validates :username, presence: :true, uniqueness: { case_sensitive: false }
+  # validates_format_of :username, with: /^[a-zA-Z0-9_\.]*$/, :multiline => true
+  # validate :validate_username
+  # def validate_username
+  #    puts "......1a..validate_username.#{}"
+  #   if User.where(email: username).exists?
+  #      puts "......1asdasda...#{User.where(email: username)}"
+  #     errors.add(:username, :invalid)
+  #   end
+  # end
 
 	attr_writer :login
 
@@ -55,22 +54,16 @@ class User < ApplicationRecord
     2.days
   end
 
- def self.find_first_by_auth_conditions(warden_conditions)
-  puts "......1...#{warden_conditions}"
-  conditions = warden_conditions.dup
-
-  if login = conditions.delete(:login)
-   puts "...11......#{login}"  
-    where(conditions).where(["lower(username) = :value OR lower(email) = :value", { :value => login.downcase }]).first
-  else
-    puts "...111......#{login}"
-    if conditions[:username].nil?
-      puts "..1111.......#{conditions}"
-      where(conditions).first
+  def self.find_first_by_auth_conditions(warden_conditions)
+    conditions = warden_conditions.dup
+    if login = conditions.delete(:login)
+      where(conditions).where(["lower(username) = :value OR lower(email) = :value", { :value => login.downcase }]).first
     else
-      puts "...11111......#{conditions}"
-      where(username: conditions[:username]).first
+      if conditions[:username].nil?
+        where(conditions).first
+      else
+        where(username: conditions[:username]).first
+      end
     end
   end
-end
 end
